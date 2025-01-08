@@ -47,9 +47,9 @@ function spawn_enemy_wave()
     end
 end
 
--- Função para desenhar o jogador
+-- Função para desenhar o jogador com sprite
 function draw_player()
-    rect(player.x, player.y, player.width, player.height, 12)  -- cor do jogador
+    spr(player.sprite, player.x, player.y, 0, 1, 0, 0, 1, 1) 
 end
 
 -- Função para desenhar as balas
@@ -86,12 +86,12 @@ function draw_start_screen()
     print("SPACE INVADERS", 80, 40, 10)
     
     -- Informações de controle
-    print("CONTROLES:", 60, 60, 9)
-    print("Seta Cima/Baixo: Movimenta", 40, 70, 9)
-    print("Seta Esquerda/Direita: Movimenta", 40, 80, 9)
-    print("Z: Atira", 40, 90, 9)
-    print("X: Reiniciar após Game Over", 40, 100, 9)
-    print("Pressione qualquer tecla para iniciar", 20, 110, 9)
+    print("CONTROLES:", 60, 60, 10)
+    print("Seta Cima/Baixo: Movimenta", 40, 70, 10)
+    print("Seta Esquerda/Direita: Movimenta", 40, 80, 10)
+    print("Z: Atira", 40, 90, 10)
+    print("X: Reiniciar após Game Over", 40, 100, 10)
+    print("Pressione qualquer tecla para iniciar", 20, 110, 10)
 end
 
 -- Função para desenhar a tela de game over
