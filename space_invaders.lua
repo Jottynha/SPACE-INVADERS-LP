@@ -38,13 +38,50 @@ end
 
 -- Função para criar uma nova horda de inimigos
 function spawn_enemy_wave()
-    local start_x = game_area_x + (game_area_width - 5 * 16) / 2  -- Centraliza os inimigos
-    for i = 1, 5 do
-        for j = 1, 1 do  -- Nova horda de inimigos no topo
-            table.insert(enemies, {x = start_x + (i - 1) * 16, y = game_area_y - 8, width = 8, height = 8})
+    local enemy_count = 5  -- Número de inimigos a gerar
+    local max_attempts = 50  -- Tentativas para evitar colisões
+
+    for _ = 1, enemy_count do
+        local spawned = false
+        local attempts = 0
+
+        while not spawned and attempts < max_attempts do
+            attempts = attempts + 1
+
+            -- Gera coordenadas aleatórias no topo da tela
+            local new_enemy = {
+                x = math.random(game_area_x, game_area_x + game_area_width - 8), -- Aleatório na largura
+                y = game_area_y - 7,  -- Sempre no topo da tela
+                width = 8,
+                height = 8,
+                speed = math.random(1, 3) -- Velocidade aleatória para descer
+            }
+
+            -- Verifica se há colisão com outros inimigos
+            local collision = false
+            for _, enemy in ipairs(enemies) do
+                if new_enemy.x < enemy.x + enemy.width and new_enemy.x + new_enemy.width > enemy.x and
+                   new_enemy.y < enemy.y + enemy.height and new_enemy.y + new_enemy.height > enemy.y then
+                    collision = true
+                    break
+                end
+            end
+
+            -- Se não houver colisão, adiciona o inimigo à lista
+            if not collision then
+                table.insert(enemies, new_enemy)
+                spawned = true
+            end
+        end
+
+        -- Caso não consiga posicionar após várias tentativas
+        if attempts >= max_attempts then
+            print("Falha ao posicionar todos os inimigos sem colisões.")
         end
     end
 end
+
+
 
 -- Função para desenhar o jogador com sprite
 function draw_player()
@@ -53,8 +90,15 @@ end
 
 -- Função para desenhar as balas
 function draw_bullets()
-    for i, bullet in ipairs(bullets) do
-        rect(bullet.x, bullet.y, bullet.width, bullet.height, 8)  -- cor das balas
+    if special_weapon.active then
+        for i, bullet in ipairs(bullets) do
+            rect(bullet.x, bullet.y, bullet.width, bullet.height, 2)  -- cor das balas
+        end  
+
+    else
+        for i, bullet in ipairs(bullets) do
+            rect(bullet.x, bullet.y, bullet.width, bullet.height, 8)  -- cor das balas
+        end
     end
 end
 
@@ -66,13 +110,18 @@ function draw_enemies()
 end
 
 function draw_special_weapon()
-        spr(2, special_weapon.x, special_weapon.y, 0, 1, 0, 0, 1, 1) 
+    if special_weapon.x then
+        spr(2, special_weapon.x, special_weapon.y, 0, 1, 0, 0, 1, 1)
+    end
 end
 
 
 -- Função para desenhar o score
 function draw_score()
     print("Score: " .. score, 10, 10, 10)  -- Exibir a pontuação no canto superior esquerdo
+    if(special_weapon.active) then 
+        print("Special Weapon Active", 10, 20, 10) 
+    end
 end
 
 -- Função para desenhar a borda ao redor do jogo
@@ -123,10 +172,8 @@ function move_player()
 end
 
 function spawn_special_weapon()
-    if special_weapon.active or math.random(0, 500) > 495 then
         special_weapon.x = game_area_x + math.random(0, game_area_width - special_weapon.width)
         special_weapon.y = game_area_y + math.random(0, game_area_height - special_weapon.height)
-    end
 end
 
 
@@ -213,16 +260,28 @@ end
 
 -- Função para verificar colisões
 function check_collisions()
+    -- Verifica colisões entre balas e inimigos
     for i, bullet in ipairs(bullets) do
         for j, enemy in ipairs(enemies) do
             if bullet.x < enemy.x + enemy.width and bullet.x + bullet.width > enemy.x and
                bullet.y < enemy.y + enemy.height and bullet.y + bullet.height > enemy.y then
-                -- Colisão
+                -- Colisão entre bala e inimigo
                 table.remove(bullets, i)
                 table.remove(enemies, j)
                 score = score + 10  -- Aumenta a pontuação
                 break
             end
+        end
+    end
+
+    -- Verifica colisões entre o jogador e inimigos
+    for i, enemy in ipairs(enemies) do
+        if player.x < enemy.x + enemy.width and player.x + player.width > enemy.x and
+           player.y < enemy.y + enemy.height and player.y + player.height > enemy.y then
+            -- Colisão entre jogador e inimigo
+            print("Game Over")
+            game_over = true
+            break
         end
     end
 end
@@ -239,7 +298,6 @@ function draw_game()
     if game_over then
         draw_game_over_screen()  -- Exibe a tela de Game Over
     end
-    
 end
 
 -- Função principal
@@ -259,12 +317,10 @@ function TIC()
             check_collisions()
             update_weapon()
             check_special_weapon_collision()    
-
-            -- Criar novas hordas de inimigos após um tempo
-            if t % 180 == 0 then  -- A cada 3 segundos (180 quadros), uma nova horda
+            if t % 120 == 0 then  -- A cada 3 segundos , uma nova horda
                 spawn_enemy_wave()
             end
-            if t % 600 == 0 then  -- A cada 10 segundos (180 quadros), uma nova horda
+            if t % 600 == 0 then  -- A cada 10 segundos , uma nova horda
                 spawn_special_weapon()
             end
         elseif btnp(5) then  -- Botão X para reiniciar o jogo
