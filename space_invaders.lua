@@ -19,8 +19,7 @@ x = 96
 y = 24
 enemy_direction = 1  -- Direção do movimento dos inimigos (1: para a direita, -1: para a esquerda)
 enemy_move_counter = 0
-
--- Definindo a posição da área de jogo centralizada
+special_weapon = {x = nil, y = nil, width = 8, height = 8, active = false, duration = 180, timer = 0}
 game_area_x = 40
 game_area_y = 20
 game_area_width = 160
@@ -62,9 +61,14 @@ end
 -- Função para desenhar os inimigos
 function draw_enemies()
     for i, enemy in ipairs(enemies) do
-        rect(enemy.x, enemy.y, enemy.width, enemy.height, 10)  -- cor dos inimigos (verde claro)
+        spr(1, enemy.x, enemy.y, 0, 1, 0, 0, 1, 1)  -- cor dos inimigos (verde claro)
     end
 end
+
+function draw_special_weapon()
+        spr(2, special_weapon.x, special_weapon.y, 0, 1, 0, 0, 1, 1) 
+end
+
 
 -- Função para desenhar o score
 function draw_score()
@@ -118,6 +122,14 @@ function move_player()
     if player.y > game_area_y + game_area_height - player.height then player.y = game_area_y + game_area_height - player.height end
 end
 
+function spawn_special_weapon()
+    if special_weapon.active or math.random(0, 500) > 495 then
+        special_weapon.x = game_area_x + math.random(0, game_area_width - special_weapon.width)
+        special_weapon.y = game_area_y + math.random(0, game_area_height - special_weapon.height)
+    end
+end
+
+
 -- Função para atirar
 function shoot()
     if btnp(4) then  -- botão de atirar (Z)
@@ -125,14 +137,39 @@ function shoot()
     end
 end
 
--- Função para mover as balas
+function shoot_special()
+    if btnp(4) then  -- Botão de disparo (Z)
+        table.insert(bullets, {x = player.x + 3, y = player.y, width = 2, height = 4}) -- Disparo central
+        table.insert(bullets, {x = player.x - 3, y = player.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
+        table.insert(bullets, {x = player.x + 9, y = player.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
+    end
+end
+
+
 function move_bullets()
     for i, bullet in ipairs(bullets) do
-        bullet.y = bullet.y - 4  -- velocidade da bala
+        bullet.y = bullet.y - 4  -- Movimento vertical
+        if bullet.dx then bullet.x = bullet.x + bullet.dx * 2 end -- Movimento diagonal
+        if bullet.dy then bullet.y = bullet.y + bullet.dy * 2 end -- Movimento diagonal
         -- Verificar se a bala saiu da tela
-        if bullet.y < game_area_y then
+        if bullet.y < game_area_y or bullet.x < game_area_x or bullet.x > game_area_x + game_area_width then
             table.remove(bullets, i)
         end
+    end
+end
+
+function update_weapon()
+    if special_weapon.active then
+        special_weapon.timer = special_weapon.timer - 1
+        if special_weapon.timer <= 0 then
+            special_weapon.active = false
+        end
+    end
+    
+    if special_weapon.active then
+        shoot_special()  -- Ativar disparo especial
+    else
+        shoot()  -- Disparo normal
     end
 end
 
@@ -162,6 +199,18 @@ function move_enemies()
     end
 end
 
+function check_special_weapon_collision()
+    if special_weapon.x and player.x < special_weapon.x + special_weapon.width and
+       player.x + player.width > special_weapon.x and
+       player.y < special_weapon.y + special_weapon.height and
+       player.y + player.height > special_weapon.y then
+        special_weapon.active = true
+        special_weapon.timer = special_weapon.duration
+        special_weapon.x = nil  -- Remove o item da tela
+        special_weapon.y = nil
+    end
+end
+
 -- Função para verificar colisões
 function check_collisions()
     for i, bullet in ipairs(bullets) do
@@ -185,10 +234,12 @@ function draw_game()
     draw_player()
     draw_bullets()
     draw_enemies()
+    draw_special_weapon()
     draw_score()  -- Exibe o score
     if game_over then
         draw_game_over_screen()  -- Exibe a tela de Game Over
     end
+    
 end
 
 -- Função principal
@@ -206,10 +257,15 @@ function TIC()
             move_bullets()
             move_enemies()
             check_collisions()
+            update_weapon()
+            check_special_weapon_collision()    
 
             -- Criar novas hordas de inimigos após um tempo
             if t % 180 == 0 then  -- A cada 3 segundos (180 quadros), uma nova horda
                 spawn_enemy_wave()
+            end
+            if t % 600 == 0 then  -- A cada 10 segundos (180 quadros), uma nova horda
+                spawn_special_weapon()
             end
         elseif btnp(5) then  -- Botão X para reiniciar o jogo
             game_over = false
