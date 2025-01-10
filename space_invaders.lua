@@ -305,6 +305,7 @@ end
 function shoot()
     if btn(4) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 1, height = 2})  -- Tiro pequeno
+        sfx(0) -- Som de tiro
         shot_timer = shot_cooldown  -- Reinicia o timer de cooldown
     end
 end
