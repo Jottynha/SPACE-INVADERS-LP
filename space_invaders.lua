@@ -7,7 +7,7 @@
 -- script:  lua
 
 -- Definir variáveis globais
-player = {x = 100, y = 120, width = 8, height = 8, speed = 2}
+player = {x = 100, y = 120, width = 8, height = 8, speed =2, lives = 3, immunity_timer = 0}
 bullets = {}
 enemies = {}
 explosions = {}  -- Tabela para armazenar as animações de explosão
@@ -21,17 +21,26 @@ t = 0
 score = 0  -- Variável de pontuação
 x = 96
 y = 24
-enemy_direction = 1  -- Direção do movimento dos inimigos (1: para a direita, -1: para a esquerda)
-enemy_move_counter = 0
+
+-- TIRO
 special_weapon = {x = nil, y = nil, width = 8, height = 8, active = false, duration = 180, timer = 0}
+local shot_cooldown = 10  -- Define o tempo de espera entre os tiros
+local shot_timer = 0  -- Timer para controlar o tempo de espera
+
+-- AREA DO JOGO
 game_area_x = 40
 game_area_y = 20
 game_area_width = 160
 game_area_height = 96
+
+--  INIMIGOS
+enemy_direction = 1  -- Direção do movimento dos inimigos (1: para a direita, -1: para a esquerda)
+enemy_move_counter = 0
 enemy_bullets = {}
 enemy_shoot_timer = 0
 enemy_shoot_interval = 120  -- Inimigos atiram a cada 120 quadros (~2 segundos a 60 FPS)
 
+-- BARREIRA
 barriers = {}
 local barrier_rows = 3
 local barrier_cols = 8
@@ -175,19 +184,27 @@ end
 
 -- Função para desenhar o jogador com sprite
 function draw_player()
-    spr(player.sprite, player.x, player.y, 0, 1, 0, 0, 1, 1) 
+    if player.immunity_timer > 0 then
+        player.immunity_timer = player.immunity_timer - 1  -- Diminui o temporizador de imunidade
+        if t % 15 < 8 then  -- A cada 15 quadros, o jogador pisca
+            spr(0, player.x, player.y, 0, 1, 0, 0, 1, 1) 
+        end
+    else
+        spr(0, player.x, player.y, 0, 1, 0, 0, 1, 1) 
+    end
+    
 end
 
 -- Função para desenhar as balas
 function draw_bullets()
     if special_weapon.active then
         for i, bullet in ipairs(bullets) do
-            rect(bullet.x, bullet.y, bullet.width, bullet.height, 2)  -- cor das balas
+            rect(bullet.x, bullet.y, 2, 4, 2)  -- cor das balas
         end  
 
     else
         for i, bullet in ipairs(bullets) do
-            rect(bullet.x, bullet.y, bullet.width, bullet.height, 8)  -- cor das balas
+            rect(bullet.x, bullet.y, 2, 4, 8)  -- cor das balas
         end
     end
 end
@@ -213,7 +230,24 @@ function draw_score()
     if(special_weapon.active) then 
         print("Special Weapon Active", 10, 20, 10) 
     end
+    local life_icon_x = 60  
+    for i = 1, player.lives do
+        spr(4, life_icon_x, 10, 0, 1, 0, 0, 1, 1)  
+        life_icon_x = life_icon_x + 12  -- Espaco entre os ícones de vida
+    end
 end
+
+function player_loses_life()
+    if player.lives > 0 and player.immunity_timer == 0 then
+        player.lives = player.lives - 1  -- Diminui uma vida
+        player.immunity_timer = 180  -- 180 quadros = 3 segundos de imunidade
+    end
+    
+    if player.lives == 0 then
+        game_over = true  -- Acaba o jogo quando as vidas chegam a 0
+    end
+end
+
 
 -- Função para desenhar a borda ao redor do jogo
 function draw_border()
@@ -267,19 +301,26 @@ function spawn_special_weapon()
         special_weapon.y = game_area_y + math.random(0, game_area_height - special_weapon.height)
 end
 
-
 -- Função para atirar
 function shoot()
-    if btnp(4) then  -- botão de atirar (Z)
-        table.insert(bullets, {x = player.x + 3, y = player.y, width = 2, height = 4})
+    if btn(4) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
+        table.insert(bullets, {x = player.x + 3, y = player.y, width = 1, height = 2})  -- Tiro pequeno
+        shot_timer = shot_cooldown  -- Reinicia o timer de cooldown
     end
 end
 
 function shoot_special()
-    if btnp(4) then  -- Botão de disparo (Z)
+    if btn(4) and shot_timer == 0 then  -- Botão de disparo (Z)
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 2, height = 4}) -- Disparo central
         table.insert(bullets, {x = player.x - 3, y = player.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
         table.insert(bullets, {x = player.x + 9, y = player.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
+        shot_timer = shot_cooldown
+    end
+end
+
+function update_shooting()
+    if shot_timer > 0 then
+        shot_timer = shot_timer - 1  -- Decrementa o timer a cada quadro
     end
 end
 
@@ -383,9 +424,8 @@ function check_collisions()
     for i, enemy in ipairs(enemies) do
         if player.x < enemy.x + enemy.width and player.x + player.width > enemy.x and
            player.y < enemy.y + enemy.height and player.y + player.height > enemy.y then
-            -- Colisão entre jogador e inimigo
-            print("Game Over")
-            game_over = true
+            player_loses_life()
+
             break
         end
     end
@@ -457,7 +497,8 @@ function update_enemy_bullets()
         -- Verifica colisão com o jogador
         if bullet.x < player.x + player.width and bullet.x + bullet.width > player.x and
            bullet.y < player.y + player.height and bullet.y + bullet.height > player.y then
-            game_over = true
+            player_loses_life()
+            table.remove(enemy_bullets, i)
             break
         end
     end
@@ -486,7 +527,6 @@ function draw_enemy_bullets()
 end
 
 -- Função principal
--- Função principal
 function TIC()
     if not musica then
         initialize_barriers()
@@ -504,12 +544,12 @@ function TIC()
         if not game_over then
             -- Atualizar o jogo normalmente
             move_player()
-            shoot()
             move_bullets()
             move_enemies()
             check_collisions()
             update_enemy_bullets()
             update_enemy_shooting()
+            update_shooting()
             update_weapon()
             check_special_weapon_collision()
             
@@ -543,6 +583,7 @@ function reset_game()
     score = 0  -- Resetar o score
     player.x = 100
     player.y = 120
+    player.lives = 3
     bullets = {}
     enemies = {}
     enemy_bullets = {}
