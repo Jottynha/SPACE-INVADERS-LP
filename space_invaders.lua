@@ -8,12 +8,14 @@
 
 -- Definir variáveis globais
 player = {x = 100, y = 120, width = 8, height = 8, speed =2, lives = 3, immunity_timer = 0}
+player2 = {x = 120, y = 120, width = 8, height = 8, speed = 2, lives = 3, immunity_timer = 0}
 bullets = {}
 enemies = {}
 explosions = {}  -- Tabela para armazenar as animações de explosão
 explosion_frames = {16, 17, 18, 19}  
 explosion_duration = 10  -- Duração de cada frame da animação em contagem de ciclos
 enemy_speed = 0.1  -- Diminui a velocidade dos inimigos
+local enemy_count = 5 -- Número de inimigos a gerar
 game_over = false
 game_started = false
 musica = false
@@ -26,6 +28,7 @@ y = 24
 special_weapon = {x = nil, y = nil, width = 8, height = 8, active = false, duration = 180, timer = 0}
 local shot_cooldown = 10  -- Define o tempo de espera entre os tiros
 local shot_timer = 0  -- Timer para controlar o tempo de espera
+local shot_timer_2 = 0  -- Timer para controlar o tempo de espera
 
 -- AREA DO JOGO
 game_area_x = 40
@@ -138,7 +141,6 @@ end
 
 -- Função para criar uma nova horda de inimigos
 function spawn_enemy_wave()
-    local enemy_count = 5  -- Número de inimigos a gerar
     local max_attempts = 50  -- Tentativas para evitar colisões
 
     for _ = 1, enemy_count do
@@ -183,7 +185,8 @@ end
 
 
 -- Função para desenhar o jogador com sprite
-function draw_player()
+function draw_players()
+    -- Desenha o primeiro jogador
     if player.immunity_timer > 0 then
         player.immunity_timer = player.immunity_timer - 1  -- Diminui o temporizador de imunidade
         if t % 15 < 8 then  -- A cada 15 quadros, o jogador pisca
@@ -193,6 +196,15 @@ function draw_player()
         spr(0, player.x, player.y, 0, 1, 0, 0, 1, 1) 
     end
     
+    -- Desenha o segundo jogador
+    if player2.immunity_timer > 0 then
+        player2.immunity_timer = player2.immunity_timer - 1  -- Diminui o temporizador de imunidade
+        if t % 15 < 8 then  -- A cada 15 quadros, o jogador pisca
+            spr(30, player2.x, player2.y, 0, 1, 0, 0, 1, 1)  -- Sprites diferentes para diferenciar
+        end
+    else
+        spr(30, player2.x, player2.y, 0, 1, 0, 0, 1, 1)  -- Desenha o segundo jogador
+    end
 end
 
 -- Função para desenhar as balas
@@ -235,6 +247,11 @@ function draw_score()
         spr(4, life_icon_x, 10, 0, 1, 0, 0, 1, 1)  
         life_icon_x = life_icon_x + 12  -- Espaco entre os ícones de vida
     end
+    local life_icon_x = 100 
+    for i = 1, player2.lives do
+        spr(4, life_icon_x, 10, 0, 1, 0, 0, 1, 1)  
+        life_icon_x = life_icon_x + 12  -- Espaco entre os ícones de vida
+    end
 end
 
 function player_loses_life()
@@ -244,6 +261,17 @@ function player_loses_life()
     end
     
     if player.lives == 0 then
+        game_over = true  -- Acaba o jogo quando as vidas chegam a 0
+    end
+end
+
+function player_loses_life_2()
+    if player2.lives > 0 and player2.immunity_timer == 0 then
+        player2.lives = player2.lives - 1  -- Diminui uma vida
+        player2.immunity_timer = 180  -- 180 quadros = 3 segundos de imunidade
+    end
+    
+    if player2.lives == 0 then
         game_over = true  -- Acaba o jogo quando as vidas chegam a 0
     end
 end
@@ -285,8 +313,6 @@ end
 
 -- Função para mover o jogador
 function move_player()
-    if btn(0) then player.y = player.y - player.speed end  -- cima
-    if btn(1) then player.y = player.y + player.speed end  -- baixo
     if btn(2) then player.x = player.x - player.speed end  -- esquerda
     if btn(3) then player.x = player.x + player.speed end  -- direita
     -- Limitar o movimento do jogador para não sair da tela
@@ -296,21 +322,38 @@ function move_player()
     if player.y > game_area_y + game_area_height - player.height then player.y = game_area_y + game_area_height - player.height end
 end
 
+function move_player2()
+    if btn(0) then player2.x = player2.x - player2.speed end  -- A (esquerda)
+    if btn(1) then player2.x = player2.x + player2.speed end  -- D (direita)
+    -- Limitar o movimento do segundo jogador para não sair da tela
+    if player2.x < game_area_x then player2.x = game_area_x end
+    if player2.x + player2.width > game_area_x + game_area_width then player2.x = game_area_x + game_area_width - player2.width end
+    if player2.y < game_area_y then player2.y = game_area_y end
+    if player2.y + player2.height > game_area_y + game_area_height then player2.y = game_area_y + game_area_height - player2.height end
+end
+
 function spawn_special_weapon()
         special_weapon.x = game_area_x + math.random(0, game_area_width - special_weapon.width)
-        special_weapon.y = game_area_y + math.random(0, game_area_height - special_weapon.height)
+        special_weapon.y = player.y
 end
 
 -- Função para atirar
 function shoot()
-    if btn(4) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
+    if btn(6) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 1, height = 2})  -- Tiro pequeno
         shot_timer = shot_cooldown  -- Reinicia o timer de cooldown
     end
 end
 
+function shoot_player2()
+    if btn(4) and shot_timer_2 == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
+        table.insert(bullets, {x = player2.x + 3, y = player2.y, width = 1, height = 2})  -- Tiro pequeno
+        shot_timer_2 = shot_cooldown  -- Reinicia o timer de cooldown
+    end
+end
+
 function shoot_special()
-    if btn(4) and shot_timer == 0 then  -- Botão de disparo (Z)
+    if btn(6) and shot_timer == 0 then  -- Botão de disparo (Z)
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 2, height = 4}) -- Disparo central
         table.insert(bullets, {x = player.x - 3, y = player.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
         table.insert(bullets, {x = player.x + 9, y = player.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
@@ -318,9 +361,21 @@ function shoot_special()
     end
 end
 
+function shoot_special_2()
+    if btn(4) and shot_timer == 0 then  -- Botão de disparo (Z)
+        table.insert(bullets, {x = player2.x + 3, y = player2.y, width = 2, height = 4}) -- Disparo central
+        table.insert(bullets, {x = player2.x - 3, y = player2.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
+        table.insert(bullets, {x = player2.x + 9, y = player2.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
+        shot_timer_2 = shot_cooldown
+    end
+end
+
 function update_shooting()
     if shot_timer > 0 then
         shot_timer = shot_timer - 1  -- Decrementa o timer a cada quadro
+    end
+    if shot_timer_2 > 0 then
+        shot_timer_2 = shot_timer_2 - 1  -- Decrementa o timer a cada quadro
     end
 end
 
@@ -347,10 +402,14 @@ function update_weapon()
     
     if special_weapon.active then
         shoot_special()  -- Ativar disparo especial
+        shoot_special_2()  -- Ativar disparo especial
     else
         shoot()  -- Disparo normal
+        shoot_player2()
     end
 end
+
+
 
 -- Função para mover os inimigos
 function move_enemies()
@@ -392,6 +451,15 @@ function check_special_weapon_collision()
        player.x + player.width > special_weapon.x and
        player.y < special_weapon.y + special_weapon.height and
        player.y + player.height > special_weapon.y then
+        special_weapon.active = true
+        special_weapon.timer = special_weapon.duration
+        special_weapon.x = nil  -- Remove o item da tela
+        special_weapon.y = nil
+    end
+    if special_weapon.x and player2.x < special_weapon.x + special_weapon.width and
+       player2.x + player2.width > special_weapon.x and
+       player2.y < special_weapon.y + special_weapon.height and
+       player2.y + player2.height > special_weapon.y then
         special_weapon.active = true
         special_weapon.timer = special_weapon.duration
         special_weapon.x = nil  -- Remove o item da tela
@@ -456,7 +524,7 @@ end
 function draw_game()
     cls(0)  -- Limpar tela com fundo preto
     draw_border()
-    draw_player()
+    draw_players()
     draw_bullets()
     draw_enemies()
     draw_special_weapon()
@@ -498,6 +566,12 @@ function update_enemy_bullets()
         if bullet.x < player.x + player.width and bullet.x + bullet.width > player.x and
            bullet.y < player.y + player.height and bullet.y + bullet.height > player.y then
             player_loses_life()
+            table.remove(enemy_bullets, i)
+            break
+        end
+        if bullet.x < player2.x + player2.width and bullet.x + bullet.width > player2.x and
+           bullet.y < player2.y + player2.height and bullet.y + bullet.height > player2.y then
+            player_loses_life_2()
             table.remove(enemy_bullets, i)
             break
         end
@@ -544,6 +618,7 @@ function TIC()
         if not game_over then
             -- Atualizar o jogo normalmente
             move_player()
+            move_player2()
             move_bullets()
             move_enemies()
             check_collisions()
@@ -555,7 +630,10 @@ function TIC()
             
             -- Criar novas hordas ou armas especiais periodicamente
             if t % 120 == 0 then spawn_enemy_wave() end  -- A cada 3 segundos
-            if t % 600 == 0 then spawn_special_weapon() end  -- A cada 10 segundos
+            if t % 600 == 0 then 
+                spawn_special_weapon() 
+                enemy_count = enemy_count + 1 
+            end  -- A cada 10 segundos
             
         else
             -- Tela de Game Over
@@ -584,6 +662,7 @@ function reset_game()
     player.x = 100
     player.y = 120
     player.lives = 3
+    player2.lives = 3
     bullets = {}
     enemies = {}
     enemy_bullets = {}
