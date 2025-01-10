@@ -16,6 +16,7 @@ explosion_duration = 10  -- Duração de cada frame da animação em contagem de
 enemy_speed = 0.1  -- Diminui a velocidade dos inimigos
 game_over = false
 game_started = false
+musica = false
 t = 0
 score = 0  -- Variável de pontuação
 x = 96
@@ -27,6 +28,93 @@ game_area_x = 40
 game_area_y = 20
 game_area_width = 160
 game_area_height = 96
+enemy_bullets = {}
+enemy_shoot_timer = 0
+enemy_shoot_interval = 120  -- Inimigos atiram a cada 120 quadros (~2 segundos a 60 FPS)
+
+barriers = {}
+local barrier_rows = 3
+local barrier_cols = 8
+local barrier_block_width = 4
+local barrier_block_height = 3
+local barrier_spacing = 20  -- Espaçamento entre as barreiras
+
+function initialize_barriers()
+    local barrier_count = 3  -- Número de barreiras
+    local total_width = barrier_count * (barrier_cols * barrier_block_width) + (barrier_count - 1) * barrier_spacing
+    local start_x = game_area_x + (game_area_width / 2) - (total_width / 2)
+    local start_y = player.y - 26
+
+    for b = 1, barrier_count do
+        local barrier_start_x = start_x + (b - 1) * (barrier_cols * barrier_block_width + barrier_spacing)
+        barriers[b] = {}
+
+        for row = 1, barrier_rows do
+            barriers[b][row] = {}
+            for col = 1, barrier_cols do
+                local is_u_shape = (row < barrier_rows) or (col == 1 or col == barrier_cols)
+                barriers[b][row][col] = {
+                    x = barrier_start_x + (col - 1) * barrier_block_width,
+                    y = start_y + (row - 1) * barrier_block_height,
+                    state = is_u_shape and 1 or 0 -- 1 para bloco ativo, 0 para espaço vazio
+                }
+            end
+        end
+    end
+end
+
+function draw_barriers()
+    for b, barrier in ipairs(barriers) do
+        for row = 1, #barrier do
+            for col = 1, #barrier[row] do
+                local block = barrier[row][col]
+                if block.state > 0 then
+                    spr(4 + (4 - block.state), block.x, block.y)  -- Usa sprites diferentes para estados
+                end
+            end
+        end
+    end
+end
+
+function update_barriers_on_collision()
+    for b, barrier in ipairs(barriers) do
+        for row = 1, #barrier do
+            for col = 1, #barrier[row] do
+                local block = barrier[row][col]
+                if block.state > 0 then
+                    -- Verifica se uma bala inimiga colidiu com o bloco
+                    for i, bullet in ipairs(enemy_bullets) do
+                        if bullet.x < block.x + barrier_block_width and bullet.x + bullet.width > block.x and
+                           bullet.y < block.y + barrier_block_height and bullet.y + bullet.height > block.y then
+                            -- Reduz o estado do bloco
+                            block.state = block.state - 1
+                            -- Remove a bala
+                            table.remove(enemy_bullets, i)
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function update_enemy_bullets()
+    for i = #enemy_bullets, 1, -1 do
+        local bullet = enemy_bullets[i]
+        bullet.y = bullet.y + bullet.speed
+        -- Remove a bala se sair da tela
+        if bullet.y > game_area_y + game_area_height then
+            table.remove(enemy_bullets, i)
+        end
+    end
+
+    -- Atualizar colisões com barreiras
+    update_barriers_on_collision()
+end
+
+
+
 
 -- Função para criar inimigos em uma formação centralizada
 function create_enemies()
@@ -334,14 +422,78 @@ function draw_game()
     draw_special_weapon()
     draw_score()  -- Exibe o score
     draw_explosions()
+    draw_barriers()
+    draw_enemy_bullets()
     if game_over then
         draw_game_over_screen()  -- Exibe a tela de Game Over
     end
 end
 
+-- Função para disparar tiros dos inimigos
+function enemy_shoot(enemy)
+    local bullet = {
+        x = enemy.x + enemy.width / 2 - 1,
+        y = enemy.y + enemy.height,
+        width = 2,
+        height = 4,
+        speed = 1
+    }
+    table.insert(enemy_bullets, bullet)
+end
+
+-- Atualizar os tiros dos inimigos
+function update_enemy_bullets()
+    for i = #enemy_bullets, 1, -1 do
+        local bullet = enemy_bullets[i]
+        bullet.y = bullet.y + bullet.speed
+
+        -- Verifica colisão com barreiras
+        if update_barriers_on_collision(bullet) then
+            table.remove(enemy_bullets, i)
+        elseif bullet.y > game_area_y + game_area_height then
+            table.remove(enemy_bullets, i)  -- Remove tiros fora da tela
+        end
+
+        -- Verifica colisão com o jogador
+        if bullet.x < player.x + player.width and bullet.x + bullet.width > player.x and
+           bullet.y < player.y + player.height and bullet.y + bullet.height > player.y then
+            game_over = true
+            break
+        end
+    end
+end
+
+-- Atualizar disparos dos inimigos periodicamente
+function update_enemy_shooting()
+    enemy_shoot_timer = enemy_shoot_timer + 1
+    if enemy_shoot_timer >= enemy_shoot_interval then
+        enemy_shoot_timer = 0
+
+        -- Escolhe inimigos aleatórios para atirar
+        for _, enemy in ipairs(enemies) do
+            if math.random() < 0.3 then  -- 30% de chance de atirar
+                enemy_shoot(enemy)
+            end
+        end
+    end
+end
+
+-- Função para desenhar tiros dos inimigos
+function draw_enemy_bullets()
+    for _, bullet in ipairs(enemy_bullets) do
+        rect(bullet.x, bullet.y, bullet.width, bullet.height, 8)  -- Cor 8 para vermelho
+    end
+end
+
+-- Função principal
 -- Função principal
 function TIC()
-    music(0)
+    if not musica then
+        initialize_barriers()
+        music(1)
+        musica = true
+    end
+    
     if not game_started then
         draw_start_screen()  -- Exibir tela inicial
         if btnp(4) or btnp(0) or btnp(1) or btnp(2) or btnp(3) then
@@ -350,28 +502,51 @@ function TIC()
         end
     else
         if not game_over then
+            -- Atualizar o jogo normalmente
             move_player()
             shoot()
             move_bullets()
             move_enemies()
             check_collisions()
+            update_enemy_bullets()
+            update_enemy_shooting()
             update_weapon()
-            check_special_weapon_collision()    
-            if t % 120 == 0 then  -- A cada 3 segundos , uma nova horda
-                spawn_enemy_wave()
+            check_special_weapon_collision()
+            
+            -- Criar novas hordas ou armas especiais periodicamente
+            if t % 120 == 0 then spawn_enemy_wave() end  -- A cada 3 segundos
+            if t % 600 == 0 then spawn_special_weapon() end  -- A cada 10 segundos
+            
+        else
+            -- Tela de Game Over
+            cls()  -- Limpa a tela
+            print("GAME OVER", 84, 60, 12)  -- Mensagem centralizada
+            print("Pontuação: " .. score, 74, 80, 12)  -- Pontuação final
+            print("Pressione X para reiniciar", 50, 100, 6)  -- Instruções
+            
+            -- Reiniciar o jogo ao pressionar X (botão 5)
+            if btnp(5) then
+                reset_game()
             end
-            if t % 600 == 0 then  -- A cada 10 segundos , uma nova horda
-                spawn_special_weapon()
-            end
-        elseif btnp(5) then  -- Botão X para reiniciar o jogo
-            game_over = false
-            score = 0  -- Resetar o score
-            create_enemies()
-            player.x = 100
-            player.y = 120
-            bullets = {}
         end
-        draw_game()
+        
+        draw_game()  -- Desenha o jogo em qualquer estado
     end
-    t = t + 1  -- Incrementar o contador para animação
+    
+    t = t + 1  -- Incrementar o contador para animações
+end
+
+-- Função para reiniciar o jogo
+function reset_game()
+    game_over = false
+    game_started = false
+    score = 0  -- Resetar o score
+    player.x = 100
+    player.y = 120
+    bullets = {}
+    enemies = {}
+    enemy_bullets = {}
+    barriers = {}
+    initialize_barriers()  -- Reiniciar barreiras
+    create_enemies()  -- Criar novos inimigos
 end
