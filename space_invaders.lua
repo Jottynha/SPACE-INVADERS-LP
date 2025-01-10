@@ -24,11 +24,7 @@ y = 24
 
 -- TIRO
 special_weapon = {x = nil, y = nil, width = 8, height = 8, active = false, duration = 180, timer = 0}
-<<<<<<< Updated upstream
-local shot_cooldown = 20  -- Define o tempo de espera entre os tiros
-=======
 local shot_cooldown = 10  -- Define o tempo de espera entre os tiros
->>>>>>> Stashed changes
 local shot_timer = 0  -- Timer para controlar o tempo de espera
 
 -- AREA DO JOGO
@@ -314,11 +310,7 @@ function shoot()
 end
 
 function shoot_special()
-<<<<<<< Updated upstream
-    if btnp(4) and shot_timer == 0 then  -- Botão de disparo (Z)
-=======
     if btn(4) and shot_timer == 0 then  -- Botão de disparo (Z)
->>>>>>> Stashed changes
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 2, height = 4}) -- Disparo central
         table.insert(bullets, {x = player.x - 3, y = player.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
         table.insert(bullets, {x = player.x + 9, y = player.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
@@ -559,7 +551,6 @@ function TIC()
             update_enemy_shooting()
             update_shooting()
             update_weapon()
-            update_shooting()
             check_special_weapon_collision()
             
             -- Criar novas hordas ou armas especiais periodicamente
