@@ -10,6 +10,9 @@
 player = {x = 100, y = 120, width = 8, height = 8, speed = 2}
 bullets = {}
 enemies = {}
+explosions = {}  -- Tabela para armazenar as animações de explosão
+explosion_frames = {16, 17, 18, 19}  
+explosion_duration = 10  -- Duração de cada frame da animação em contagem de ciclos
 enemy_speed = 0.1  -- Diminui a velocidade dos inimigos
 game_over = false
 game_started = false
@@ -54,7 +57,7 @@ function spawn_enemy_wave()
                 y = game_area_y - 7,  -- Sempre no topo da tela
                 width = 8,
                 height = 8,
-                speed = math.random(1, 3) -- Velocidade aleatória para descer
+                is_fast = math.random() < 0.3 -- 30% de chance de ser rápido
             }
 
             -- Verifica se há colisão com outros inimigos
@@ -82,7 +85,6 @@ function spawn_enemy_wave()
 end
 
 
-
 -- Função para desenhar o jogador com sprite
 function draw_player()
     spr(player.sprite, player.x, player.y, 0, 1, 0, 0, 1, 1) 
@@ -105,7 +107,8 @@ end
 -- Função para desenhar os inimigos
 function draw_enemies()
     for i, enemy in ipairs(enemies) do
-        spr(1, enemy.x, enemy.y, 0, 1, 0, 0, 1, 1)  -- cor dos inimigos (verde claro)
+        local sprite_id = enemy.is_fast and 3 or 1  -- Se o inimigo for rápido, usa o sprite 3
+        spr(sprite_id, enemy.x, enemy.y, 0, 1, 0, 0, 1, 1)  -- Desenha o inimigo com a cor correspondente
     end
 end
 
@@ -223,17 +226,26 @@ end
 -- Função para mover os inimigos
 function move_enemies()
     for i, enemy in ipairs(enemies) do
+        if enemy.is_fast then
+            enemy_speed = 0.3
+        else
+            enemy_speed = 0.1
+        end
         enemy.x = enemy.x + enemy_direction * enemy_speed
     end
 
-    -- Verificar se algum inimigo chegou nas bordas da tela para inverter a direção
     enemy_move_counter = enemy_move_counter + 1
     if enemy_move_counter > 60 then
         enemy_move_counter = 0
         enemy_direction = -enemy_direction
         -- Descer os inimigos
         for i, enemy in ipairs(enemies) do
-            enemy.y = enemy.y + 8
+            -- Se o inimigo for rápido, descer mais rápido
+            if enemy.is_fast then
+                enemy.y = enemy.y + 12  -- Inimigos rápidos descem mais (ex: 12 pixels)
+            else
+                enemy.y = enemy.y + 8   -- Inimigos normais descem 8 pixels
+            end
         end
     end
 
@@ -264,8 +276,12 @@ function check_collisions()
     for i, bullet in ipairs(bullets) do
         for j, enemy in ipairs(enemies) do
             if bullet.x < enemy.x + enemy.width and bullet.x + bullet.width > enemy.x and
-               bullet.y < enemy.y + enemy.height and bullet.y + bullet.height > enemy.y then
+            bullet.y < enemy.y + enemy.height and bullet.y + bullet.height > enemy.y then
                 -- Colisão entre bala e inimigo
+                -- Adiciona a animação de explosão na posição do inimigo
+                table.insert(explosions, {x = enemy.x, y = enemy.y, frame = 1, duration = explosion_duration})
+
+                -- Remove o inimigo e a bala
                 table.remove(bullets, i)
                 table.remove(enemies, j)
                 score = score + 10  -- Aumenta a pontuação
@@ -273,6 +289,7 @@ function check_collisions()
             end
         end
     end
+
 
     -- Verifica colisões entre o jogador e inimigos
     for i, enemy in ipairs(enemies) do
@@ -286,6 +303,27 @@ function check_collisions()
     end
 end
 
+function draw_explosions()
+    for i, explosion in ipairs(explosions) do
+        -- Desenha o frame da explosão baseado no índice (frame)
+        spr(explosion_frames[explosion.frame], explosion.x, explosion.y, 0, 1, 0, 0, 1, 1)
+
+        -- Atualiza o frame da animação
+        explosion.duration = explosion.duration - 1
+        if explosion.duration <= 0 then
+            -- Se a duração terminar, remove a explosão
+            table.remove(explosions, i)
+        else
+            -- Atualiza para o próximo frame
+            explosion.frame = explosion.frame + 1
+            if explosion.frame > #explosion_frames then
+                explosion.frame = 1
+            end
+        end
+    end
+end
+
+
 -- Função para desenhar o estado do jogo
 function draw_game()
     cls(0)  -- Limpar tela com fundo preto
@@ -295,6 +333,7 @@ function draw_game()
     draw_enemies()
     draw_special_weapon()
     draw_score()  -- Exibe o score
+    draw_explosions()
     if game_over then
         draw_game_over_screen()  -- Exibe a tela de Game Over
     end
@@ -302,6 +341,7 @@ end
 
 -- Função principal
 function TIC()
+    music(0)
     if not game_started then
         draw_start_screen()  -- Exibir tela inicial
         if btnp(4) or btnp(0) or btnp(1) or btnp(2) or btnp(3) then
