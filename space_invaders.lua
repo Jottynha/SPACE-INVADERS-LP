@@ -33,6 +33,10 @@ game_area_y = 20
 game_area_width = 160
 game_area_height = 96
 
+-- ID dos efeitos sonoros
+local id_shoot = 0
+local id_hit = 2
+
 --  INIMIGOS
 enemy_direction = 1  -- Direção do movimento dos inimigos (1: para a direita, -1: para a esquerda)
 enemy_move_counter = 0
@@ -305,7 +309,7 @@ end
 function shoot()
     if btn(4) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 1, height = 2})  -- Tiro pequeno
-        sfx(0) -- Som de tiro
+        sfx(id_shoot) -- Som de tiro
         shot_timer = shot_cooldown  -- Reinicia o timer de cooldown
     end
 end
@@ -315,6 +319,7 @@ function shoot_special()
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 2, height = 4}) -- Disparo central
         table.insert(bullets, {x = player.x - 3, y = player.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
         table.insert(bullets, {x = player.x + 9, y = player.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
+        sfx(id_shoot) -- Som de tiro
         shot_timer = shot_cooldown
     end
 end
@@ -414,6 +419,7 @@ function check_collisions()
                 -- Remove o inimigo e a bala
                 table.remove(bullets, i)
                 table.remove(enemies, j)
+                sfx(id_hit) -- Som da explosao
                 score = score + 10  -- Aumenta a pontuação
                 break
             end
