@@ -11,9 +11,10 @@ player = {x = 100, y = 120, width = 8, height = 8, speed =2, lives = 3, immunity
 bullets = {}
 enemies = {}
 explosions = {}  -- Tabela para armazenar as animações de explosão
-explosion_frames = {16, 17, 18, 19}  
+explosion_frames = {16, 17, 18, 19, 20, 21, 22}  
 explosion_duration = 10  -- Duração de cada frame da animação em contagem de ciclos
 enemy_speed = 0.1  -- Diminui a velocidade dos inimigos
+local enemy_count = 5  -- Número de inimigos a gerar
 game_over = false
 game_started = false
 musica = false
@@ -142,7 +143,6 @@ end
 
 -- Função para criar uma nova horda de inimigos
 function spawn_enemy_wave()
-    local enemy_count = 5  -- Número de inimigos a gerar
     local max_attempts = 50  -- Tentativas para evitar colisões
 
     for _ = 1, enemy_count do
@@ -203,12 +203,11 @@ end
 function draw_bullets()
     if special_weapon.active then
         for i, bullet in ipairs(bullets) do
-            rect(bullet.x, bullet.y, 2, 4, 2)  -- cor das balas
+            spr(36, bullet.x, bullet.y, 0, 1, 0, 0, 2, 4)
         end  
-
     else
         for i, bullet in ipairs(bullets) do
-            rect(bullet.x, bullet.y, 2, 4, 8)  -- cor das balas
+            spr(37, bullet.x, bullet.y, 0, 1, 0, 0, 2, 4)
         end
     end
 end
@@ -234,9 +233,9 @@ function draw_score()
     if(special_weapon.active) then 
         print("Special Weapon Active", 10, 20, 10) 
     end
-    local life_icon_x = 60  
+    local life_icon_x = 160  
     for i = 1, player.lives do
-        spr(4, life_icon_x, 10, 0, 1, 0, 0, 1, 1)  
+        spr(4, life_icon_x, 8, 0, 1, 0, 0, 1, 1)  
         life_icon_x = life_icon_x + 12  -- Espaco entre os ícones de vida
     end
 end
@@ -255,36 +254,81 @@ end
 
 -- Função para desenhar a borda ao redor do jogo
 function draw_border()
-    rect(game_area_x - 8, game_area_y - 8, game_area_width + 16, game_area_height + 16, 7)  -- borda em volta da área de jogo
+    rect(game_area_x - 8, game_area_y - 8, game_area_width + 16, game_area_height + 16, 0)  -- borda em volta da área de jogo
+    --spr(8, game_area_x - 8, game_area_y - 8, 0, 1, 0, 0, game_area_width + 16, game_area_height + 16)
 end
 
--- Função para desenhar a tela inicial
 function draw_start_screen()
-    cls(0)  -- Cor de fundo preta
-    -- Fundo decorado
-    rect(0, 0, 240, 136, 0)  -- fundo com borda
-    rect(10, 10, 220, 116, 7)  -- borda do jogo
-    -- Título centralizado
-    print("SPACE INVADERS", 80, 40, 10)
-    
-    -- Informações de controle
-    print("CONTROLES:", 60, 60, 10)
-    print("Seta Cima/Baixo: Movimenta", 40, 70, 10)
-    print("Seta Esquerda/Direita: Movimenta", 40, 80, 10)
-    print("Z: Atira", 40, 90, 10)
-    print("X: Reiniciar após Game Over", 40, 100, 10)
-    print("Pressione qualquer tecla para iniciar", 20, 110, 10)
+    rect(0, 0, 240, 136, 1) -- Borda externa
+    rect(5, 5, 230, 126, 0) -- Fundo interno
+    local start_id = 32 -- ID inicial
+    local sprite_size = 8 -- Tamanho do sprite (padrão é 8x8 pixels)
+    for row = 0, 3 do
+        for col = 0, 3 do
+            local sprite_id = start_id + row * 16 + col
+            spr(sprite_id, 100 + col * sprite_size, 20 + row * sprite_size,0, 1, 0, 0)
+        end
+    end
+    local mx, my, click = mouse()
+    local is_clicked, is_hovered = button_clicked(110, 60, 100, 20, "NOVO JOGO", mx, my, click)
+    local text_color = is_hovered and 15 or 10 -- Branco se colidido, preto caso contrário
+    draw_button(110, 60, 1, 1, "NOVO JOGO", 12, text_color)
+    print("CONTROLES:", 10, 90, 10)
+    print("- Setas: Movimentação", 10, 100, 6)
+    print("- Z: Atira", 10, 110, 6)
+    if button_clicked(110, 60, 100, 20, "NOVO JOGO", mx, my, click) then
+            game_started = true  -- Iniciar o jogo quando qualquer tecla for pressionada
+            create_enemies()  -- Criar inimigo
+    end
+end
+
+function draw_button(x, y, w, h, text, bg_color, text_color)
+    rect(x, y, w, h, bg_color)
+    local char_width = 4  
+    local text_width = #text * char_width
+    local text_height = 6 
+    local text_x = x + (w - text_width) // 2
+    local text_y = y + (h - text_height) // 2
+    print(text, text_x, text_y, text_color)
+end
+
+
+function button_clicked(x, y, w, h, text, mx, my, click)
+    -- Define os limites baseados no texto
+    local char_width = 4
+    local text_width = #text * char_width
+    local text_x = x + (w - text_width) // 2
+    local text_right = text_x + text_width
+
+    -- Ajusta os limites clicáveis (opcionalmente inclui um "padding" ao redor do botão)
+    local padding = 2
+    local button_left = math.min(x, text_x) - padding
+    local button_right = math.max(x + w, text_right) + padding
+    local button_top = y - padding
+    local button_bottom = y + h + padding
+
+    -- Verifica colisão considerando o texto e os limites ajustados
+    local is_hovered = mx >= button_left and mx < button_right and my >= button_top and my < button_bottom
+    local is_clicked = is_hovered and click
+
+    -- Retorna se o botão foi clicado e se o mouse está sobre ele
+    return is_clicked, is_hovered
 end
 
 -- Função para desenhar a tela de game over
 function draw_game_over_screen()
-    cls(0)  -- Cor de fundo preta
-    -- Fundo decorado
     rect(0, 0, 240, 136, 0)  -- fundo com borda
-    rect(10, 10, 220, 116, 7)  -- borda do jogo
+    rect(10, 10, 220, 116, 0)  -- borda do jogo
     -- Texto de Game Over
-    print("GAME OVER", 100, 60, 8)
-    print("Pressione X para reiniciar", 40, 80, 8)  -- Mensagem para reiniciar
+    print("GAME OVER", 90, 40, 8)
+    print("Score: " .. score, 90, 50, 8)
+    local mx, my, click = mouse()
+    local is_clicked, is_hovered = button_clicked(110, 60, 100, 20, "REINICIAR", mx, my, click)
+    local text_color = is_hovered and 15 or 10
+    draw_button(110, 60, 1, 1, "REINICIAR", 12, text_color)
+    if button_clicked(110, 60, 20, 20, "REINICIAR", mx, my, click) then
+        reset_game()
+    end
 end
 
 -- Função para mover o jogador
@@ -302,7 +346,7 @@ end
 
 function spawn_special_weapon()
         special_weapon.x = game_area_x + math.random(0, game_area_width - special_weapon.width)
-        special_weapon.y = game_area_y + math.random(0, game_area_height - special_weapon.height)
+        special_weapon.y = player.y
 end
 
 -- Função para atirar
@@ -542,11 +586,7 @@ function TIC()
     end
     
     if not game_started then
-        draw_start_screen()  -- Exibir tela inicial
-        if btnp(4) or btnp(0) or btnp(1) or btnp(2) or btnp(3) then
-            game_started = true  -- Iniciar o jogo quando qualquer tecla for pressionada
-            create_enemies()  -- Criar inimigos
-        end
+        draw_start_screen()
     else
         if not game_over then
             -- Atualizar o jogo normalmente
@@ -562,19 +602,10 @@ function TIC()
             
             -- Criar novas hordas ou armas especiais periodicamente
             if t % 120 == 0 then spawn_enemy_wave() end  -- A cada 3 segundos
-            if t % 600 == 0 then spawn_special_weapon() end  -- A cada 10 segundos
-            
-        else
-            -- Tela de Game Over
-            cls()  -- Limpa a tela
-            print("GAME OVER", 84, 60, 12)  -- Mensagem centralizada
-            print("Pontuação: " .. score, 74, 80, 12)  -- Pontuação final
-            print("Pressione X para reiniciar", 50, 100, 6)  -- Instruções
-            
-            -- Reiniciar o jogo ao pressionar X (botão 5)
-            if btnp(5) then
-                reset_game()
-            end
+            if t % 600 == 0 then 
+                spawn_special_weapon() 
+                enemy_count = enemy_count + 1
+            end  -- A cada 10 segundos
         end
         
         draw_game()  -- Desenha o jogo em qualquer estado
