@@ -29,10 +29,10 @@ local shot_cooldown = 10  -- Define o tempo de espera entre os tiros
 local shot_timer = 0  -- Timer para controlar o tempo de espera
 
 -- AREA DO JOGO
-game_area_x = 40
-game_area_y = 20
-game_area_width = 160
-game_area_height = 96
+game_area_x = 5
+game_area_y = -20
+game_area_width = 230
+game_area_height = 192
 
 -- ID dos efeitos sonoros
 local id_shoot = 0
@@ -54,7 +54,7 @@ local barrier_block_height = 3
 local barrier_spacing = 20  -- Espaçamento entre as barreiras
 
 function initialize_barriers()
-    local barrier_count = 3  -- Número de barreiras
+    local barrier_count = 4  -- Número de barreiras
     local total_width = barrier_count * (barrier_cols * barrier_block_width) + (barrier_count - 1) * barrier_spacing
     local start_x = game_area_x + (game_area_width / 2) - (total_width / 2)
     local start_y = player.y - 26
@@ -266,21 +266,37 @@ function draw_start_screen()
     for row = 0, 3 do
         for col = 0, 3 do
             local sprite_id = start_id + row * 16 + col
-            spr(sprite_id, 100 + col * sprite_size, 20 + row * sprite_size,0, 1, 0, 0)
+            spr(sprite_id, 100 + col * sprite_size, 20 + row * sprite_size, 0, 1, 0, 0)
         end
     end
+
     local mx, my, click = mouse()
     local is_clicked, is_hovered = button_clicked(110, 60, 100, 20, "NOVO JOGO", mx, my, click)
     local text_color = is_hovered and 15 or 10 -- Branco se colidido, preto caso contrário
+
+    -- Reproduzir som ao passar o mouse por cima, com duração de 15 ticks (0.25 segundos)
+    if is_hovered and not was_hovered then
+        sfx(0, "D#5", 15, 0, 15) -- ID 0, nota padrão (-1), duração de 15 ticks no canal 0
+    elseif not is_hovered and was_hovered then
+        sfx(-1, 0) -- Para o som no canal 0 quando o hover termina
+    end
+    was_hovered = is_hovered
+
     draw_button(110, 60, 1, 1, "NOVO JOGO", 12, text_color)
     print("CONTROLES:", 10, 90, 10)
     print("- Setas: Movimentação", 10, 100, 6)
     print("- Z: Atira", 10, 110, 6)
-    if button_clicked(110, 60, 100, 20, "NOVO JOGO", mx, my, click) then
-            game_started = true  -- Iniciar o jogo quando qualquer tecla for pressionada
-            create_enemies()  -- Criar inimigo
+
+    -- Reproduzir som ao clicar, com duração de 20 ticks (0.33 segundos)
+    if is_clicked then
+        sfx(1, "F#6", 20, 1, 15) -- ID 1, nota padrão (-1), duração de 20 ticks no canal 1
+        game_started = true  -- Iniciar o jogo quando qualquer tecla for pressionada
+        create_enemies()  -- Criar inimigo
     end
 end
+
+-- Variável para rastrear se o botão estava em "hover" no quadro anterior
+was_hovered = false
 
 function draw_button(x, y, w, h, text, bg_color, text_color)
     rect(x, y, w, h, bg_color)
@@ -352,18 +368,18 @@ end
 -- Função para atirar
 function shoot()
     if btn(4) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
-        table.insert(bullets, {x = player.x + 3, y = player.y, width = 1, height = 2})  -- Tiro pequeno
-        sfx(id_shoot) -- Som de tiro
+        table.insert(bullets, {x = player.x + 3, y = player.y, width = 8, height = 8})  -- Tiro pequeno
+        sfx(2, "B-6", 5, 1, 5, 1) -- Toca o som no canal 1 com volume máximo e velocidade padrão.
         shot_timer = shot_cooldown  -- Reinicia o timer de cooldown
     end
 end
 
 function shoot_special()
     if btn(4) and shot_timer == 0 then  -- Botão de disparo (Z)
-        table.insert(bullets, {x = player.x + 3, y = player.y, width = 2, height = 4}) -- Disparo central
-        table.insert(bullets, {x = player.x - 3, y = player.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
-        table.insert(bullets, {x = player.x + 9, y = player.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
-        sfx(id_shoot) -- Som de tiro
+        table.insert(bullets, {x = player.x + 3, y = player.y, width = 8, height = 8}) -- Disparo central
+        table.insert(bullets, {x = player.x - 3, y = player.y, width = 8, height = 8, dx = -1, dy = -1}) -- Diagonal esquerda
+        table.insert(bullets, {x = player.x + 9, y = player.y, width = 8, height = 8, dx = 1, dy = -1}) -- Diagonal direita
+        sfx(2, "C-6", 5, 1, 5, 1) -- Toca o som no canal 1 com volume máximo e velocidade padrão.
         shot_timer = shot_cooldown
     end
 end
@@ -463,7 +479,7 @@ function check_collisions()
                 -- Remove o inimigo e a bala
                 table.remove(bullets, i)
                 table.remove(enemies, j)
-                sfx(id_hit) -- Som da explosao
+                --sfx(id_hit) -- Som da explosao
                 score = score + 10  -- Aumenta a pontuação
                 break
             end
@@ -581,7 +597,7 @@ end
 function TIC()
     if not musica then
         initialize_barriers()
-        music(1)
+        --music(1)
         musica = true
     end
     
