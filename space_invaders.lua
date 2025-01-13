@@ -35,6 +35,10 @@ game_area_x = 5
 game_area_y = -20
 game_area_width = 230
 game_area_height = 192
+local sprite_map = {} -- Tabela para armazenar os sprites da grade
+local sprite_size = 8 
+local sprite_ids = {8, 9, 10, 11, 12}
+local initialized = false 
 
 -- ID dos efeitos sonoros
 local id_shoot = 0
@@ -284,16 +288,41 @@ function player_loses_life_2()
     end
 end
 
+function initialize_map()
+    -- Calcula o número de colunas e linhas
+    local cols = math.ceil(game_area_width / sprite_size)
+    local rows = math.ceil(game_area_height / sprite_size)
+    
+    -- Preenche o mapa com sprites aleatórios
+    for row = 0, rows - 1 do
+        sprite_map[row] = {}
+        for col = 0, cols - 1 do
+            sprite_map[row][col] = sprite_ids[math.random(#sprite_ids)]
+        end
+    end
+    
+    initialized = true -- Marca como inicializado
+end
+
 function draw_border()
-    rect(game_area_x - 8, game_area_y - 8, game_area_width + 16, game_area_height + 16, 0)  -- borda em volta da área de jogo
-    --spr(8, game_area_x - 8, game_area_y - 8, 0, 1, 0, 0, game_area_width + 16, game_area_height + 16)
+    if not initialized then
+        initialize_map() -- Inicializa o mapa apenas uma vez
+    end
+
+    -- Desenha o mapa com base nos valores armazenados
+    for row, cols in pairs(sprite_map) do
+        for col, sprite in pairs(cols) do
+            local x = game_area_x + col * sprite_size
+            local y = game_area_y + row * sprite_size
+            spr(sprite, x, y, 0)
+        end
+    end
 end
 
 function draw_start_screen()
     rect(0, 0, 240, 136, 1) -- Borda externa
     rect(5, 5, 230, 126, 0) -- Fundo interno
     local start_id = 32 -- ID inicial
-    local sprite_size = 8 -- Tamanho do sprite (padrão é 8x8 pixels)
     for row = 0, 3 do
         for col = 0, 3 do
             local sprite_id = start_id + row * 16 + col
