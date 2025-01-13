@@ -43,6 +43,7 @@ local initialized = false
 local offset = 0
 local offset_speed = 0.1
 local offset_counter = 0
+was_hovered = false -- Variável para rastrear se o botão estava em "hover" no quadro anterior
 
 -- ID dos efeitos sonoros
 local id_shoot = 0
@@ -388,9 +389,6 @@ function draw_start_screen()
     spr(255, 227, 123)
 end
 
--- Variável para rastrear se o botão estava em "hover" no quadro anterior
-was_hovered = false
-
 function draw_button(x, y, w, h, text, bg_color, text_color)
     rect(x, y, w, h, bg_color)
     local char_width = 4  
@@ -655,7 +653,7 @@ function check_life_collision()
        player2.x + player2.width > life.x and
        player2.y < life.y + life.height and
        player2.y + player2.height > life.y then
-        layer.lives = player2.lives + 1
+        player2.lives = player2.lives + 1
         life.x = nil  
         life.y = nil
     end
