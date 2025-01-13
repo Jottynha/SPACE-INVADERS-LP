@@ -217,11 +217,12 @@ end
 function draw_bullets()
     if special_weapon.active then
         for i, bullet in ipairs(bullets) do
-            spr(36, bullet.x, bullet.y, 0, 1, 0, 0, 2, 4)
-        end  
-    else
+            spr(69, bullet.x, bullet.y, 0, 1, 0, 0, 2, 4)
+        end
+    end  
+    if not special_weapon.active then
         for i, bullet in ipairs(bullets) do
-            spr(37, bullet.x, bullet.y, 0, 1, 0, 0, 2, 4)
+            spr(37, bullet.x, bullet.y, 0, 1, 0, 0)
         end
     end
 end
@@ -314,10 +315,10 @@ function draw_start_screen()
 
     draw_button(110, 60, 1, 1, "NOVO JOGO", 12, text_color)
     print("CONTROLES:", 10, 70, 10)
-    print("- Setas: Movimentação do Player 1", 10, 80, 6)
-    print("- Z: Atirar do Player 1", 10, 90, 6)
-    print("- A & D: Movimentação do Player 2", 10, 100, 6)
-    print("- L: Atirar do Player 2", 10, 110, 6)
+    print("- Setas: Movimentacao do Player 1", 10, 80, 6)
+    print("- Seta para Cima: Atirar do Player 1", 10, 90, 6)
+    print("- A & D: Movimentacao do Player 2", 10, 100, 6)
+    print("- W: Atirar do Player 2", 10, 110, 6)
     print("- X: Ativar Multiplayer", 10, 120, 6)    
 
     -- Reproduzir som ao clicar, com duração de 20 ticks (0.33 segundos)
@@ -326,6 +327,10 @@ function draw_start_screen()
         game_started = true  
         create_enemies()  
     end
+    spr(238, 219, 115)
+    spr(239, 227, 115)
+    spr(254, 219, 123)
+    spr(255, 227, 123)
 end
 
 -- Variável para rastrear se o botão estava em "hover" no quadro anterior
