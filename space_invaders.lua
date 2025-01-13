@@ -26,7 +26,7 @@ x = 96
 y = 24
 
 -- TIRO
-special_weapon = {x = nil, y = nil, width = 8, height = 8, active = false, duration = 180, timer = 0}
+special_weapon = {x = nil, y = nil, width = 8, height = 8, active = false, duration = 180, timer = 0, type= nil}
 local shot_cooldown = 10  -- Define o tempo de espera entre os tiros
 local shot_timer = 0  -- Timer para controlar o tempo de espera
 local shot_timer_2 = 0 
@@ -498,7 +498,7 @@ function spawn_special_weapon()
 end
 
 function spawn_life()
-    life.x = game_area_x + math.random(0, game_area_width - special_weapon.width)
+    life.x = game_area_x + math.random(0, game_area_width - life.width)
     life.y = player.y
 end
 
@@ -519,21 +519,43 @@ function shoot_player2()
     end
 end
 
+function randomize_special_weapon_type()
+    special_weapon.type = math.random(1, 3)  -- Randomiza entre 1 e 3
+end
+
 function shoot_special()
-    if btn(6) and shot_timer == 0 then  -- Botão de disparo (Z)
-        table.insert(bullets, {x = player.x + 3, y = player.y, width = 8, height = 8}) -- Disparo central
-        table.insert(bullets, {x = player.x - 3, y = player.y, width = 8, height = 8, dx = -1, dy = -1}) -- Diagonal esquerda
-        table.insert(bullets, {x = player.x + 9, y = player.y, width = 8, height = 8, dx = 1, dy = -1}) -- Diagonal direita
+    if btn(6) and shot_timer == 0 then 
+        if special_weapon.type == 1 then  -- Tipo 1: Tiro triplo
+            table.insert(bullets, {x = player.x + 3, y = player.y, width = 8, height = 8}) -- Disparo central
+            table.insert(bullets, {x = player.x - 3, y = player.y, width = 8, height = 8, dx = -1, dy = -1}) -- Diagonal esquerda
+            table.insert(bullets, {x = player.x + 9, y = player.y, width = 8, height = 8, dx = 1, dy = -1}) -- Diagonal direita
+        elseif special_weapon.type == 2 then  -- Tipo 2: Tiro duplo reto
+            table.insert(bullets, {x = player.x + 3, y = player.y, width = 8, height = 8}) -- Disparo central
+            table.insert(bullets, {x = player.x + 9, y = player.y, width = 8, height = 8}) -- Disparo à direita
+        elseif special_weapon.type == 3 then  -- Tipo 3: Tiro em ângulo
+            table.insert(bullets, {x = player.x + 3, y = player.y, width = 8, height = 8, dx = 1, dy = -1}) -- Diagonal direita
+            table.insert(bullets, {x = player.x + 9, y = player.y, width = 8, height = 8, dx = -1, dy = -1}) -- Diagonal esquerda
+        end
+
         sfx(2, "C-6", 5, 1, 5, 1) -- Toca o som no canal 1 com volume máximo e velocidade padrão.
         shot_timer = shot_cooldown
     end
 end
 
 function shoot_special_2()
-    if btn(4) and shot_timer_2 == 0 and player2.active then  
-        table.insert(bullets, {x = player2.x + 3, y = player2.y, width = 2, height = 4}) -- Disparo central
-        table.insert(bullets, {x = player2.x - 3, y = player2.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
-        table.insert(bullets, {x = player2.x + 9, y = player2.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
+    if btn(4) and shot_timer_2 == 0 and player2.active then 
+        if special_weapon.type == 1 then  -- Tipo 1: Tiro triplo
+            table.insert(bullets, {x = player2.x + 3, y = player2.y, width = 2, height = 4}) -- Disparo central
+            table.insert(bullets, {x = player2.x - 3, y = player2.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
+            table.insert(bullets, {x = player2.x + 9, y = player2.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
+        elseif special_weapon.type == 2 then  -- Tipo 2: Tiro duplo reto
+            table.insert(bullets, {x = player2.x + 3, y = player2.y, width = 2, height = 4}) -- Disparo central
+            table.insert(bullets, {x = player2.x + 9, y = player2.y, width = 2, height = 4}) -- Disparo à direita
+        elseif special_weapon.type == 3 then  -- Tipo 3: Tiro em ângulo
+            table.insert(bullets, {x = player2.x + 3, y = player2.y, width = 2, height = 4, dx = 1, dy = -1}) -- Diagonal direita
+            table.insert(bullets, {x = player2.x + 9, y = player2.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
+        end
+
         sfx(2, "C-6", 5, 1, 5, 1)
         shot_timer_2 = shot_cooldown
     end
@@ -659,18 +681,13 @@ function check_life_collision()
     end
 end
 
--- Função para verificar colisões
 function check_collisions()
     -- Verifica colisões entre balas e inimigos
     for i, bullet in ipairs(bullets) do
         for j, enemy in ipairs(enemies) do
             if bullet.x < enemy.x + enemy.width and bullet.x + bullet.width > enemy.x and
             bullet.y < enemy.y + enemy.height and bullet.y + bullet.height > enemy.y then
-                -- Colisão entre bala e inimigo
-                -- Adiciona a animação de explosão na posição do inimigo
                 table.insert(explosions, {x = enemy.x, y = enemy.y, frame = 1, duration = explosion_duration})
-
-                -- Remove o inimigo e a bala
                 table.remove(bullets, i)
                 table.remove(enemies, j)
                 --sfx(id_hit) -- Som da explosao
@@ -679,7 +696,6 @@ function check_collisions()
             end
         end
     end
-
 
     -- Verifica colisões entre o jogador e inimigos
     for i, enemy in ipairs(enemies) do
@@ -721,11 +737,11 @@ function draw_game()
     draw_bullets()
     draw_enemies()
     draw_special_weapon()
+    draw_life()
     draw_score()  -- Exibe o score
     draw_explosions()
     draw_barriers()
     draw_enemy_bullets()
-    draw_life()
     if game_over then
         draw_game_over_screen()  -- Exibe a tela de Game Over
     end
@@ -829,6 +845,7 @@ function TIC()
             if t % 120 == 0 then spawn_enemy_wave() end  -- A cada 3 segundos
             if t % 600 == 0 then 
                 spawn_special_weapon() 
+                randomize_special_weapon_type()
                 enemy_count = enemy_count + 1
             end  -- A cada 10 segundos
             if t% 800 == 0 then spawn_life() end
