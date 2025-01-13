@@ -40,6 +40,9 @@ local sprite_map = {} -- Tabela para armazenar os sprites da grade
 local sprite_size = 8 
 local sprite_ids = {8, 9, 10, 11, 12}
 local initialized = false 
+local offset = 0
+local offset_speed = 0.1
+local offset_counter = 0
 
 -- ID dos efeitos sonoros
 local id_shoot = 0
@@ -192,42 +195,47 @@ function spawn_enemy_wave()
     end
 end
 
-
--- Função para desenhar o jogador com sprite
 function draw_players()
-    -- Desenha o primeiro jogador
     if player.immunity_timer > 0 then
         player.immunity_timer = player.immunity_timer - 1  -- Diminui o temporizador de imunidade
         if t % 15 < 8 then  -- A cada 15 quadros, o jogador pisca
-            spr(0, player.x, player.y, 0, 1, 0, 0, 1, 1) 
+            spr(player.direction, player.x, player.y, 0, 1, 0, 0, 1, 1) 
         end
     else
-        spr(0, player.x, player.y, 0, 1, 0, 0, 1, 1) 
+        spr(player.direction, player.x, player.y, 0, 1, 0, 0, 1, 1) 
     end
-    
-    -- Desenha o segundo jogador
+
     if player2.active then
         if player2.immunity_timer > 0 then
             player2.immunity_timer = player2.immunity_timer - 1  -- Diminui o temporizador de imunidade
             if t % 15 < 8 then  -- A cada 15 quadros, o jogador pisca
-                spr(30, player2.x, player2.y, 0, 1, 0, 0, 1, 1)  -- Sprites diferentes para diferenciar
+                spr(player2.direction, player2.x, player2.y, 0, 1, 0, 0, 1, 1)  -- Sprites diferentes para diferenciar
             end
         else
-            spr(30, player2.x, player2.y, 0, 1, 0, 0, 1, 1)  -- Desenha o segundo jogador
+            spr(player2.direction, player2.x, player2.y, 0, 1, 0, 0, 1, 1)  -- Desenha o segundo jogador
         end
     end
 end
 
--- Função para desenhar as balas
 function draw_bullets()
     if special_weapon.active then
         for i, bullet in ipairs(bullets) do
-            spr(69, bullet.x, bullet.y, 0, 1, 0, 0, 2, 4)
+            if bullet.trail then
+                for j, trail in ipairs(bullet.trail) do
+                    spr(53, trail.x, trail.y, 0, 1)  -- Aqui você pode mudar o sprite para o efeito de rastro
+                end
+            end
+            spr(69, bullet.x, bullet.y, 0, 1)
         end
     end  
     if not special_weapon.active then
         for i, bullet in ipairs(bullets) do
-            spr(37, bullet.x, bullet.y, 0, 1, 0, 0)
+            if bullet.trail then
+                for j, trail in ipairs(bullet.trail) do
+                    spr(53, trail.x, trail.y, 0, 1)  -- Aqui você pode mudar o sprite para o efeito de rastro
+                end
+            end
+            spr(37, bullet.x, bullet.y, 0, 1)
         end
     end
 end
@@ -252,25 +260,37 @@ function draw_life()
 end
 
 
--- Função para desenhar o score
+function update_offset()
+    offset_counter = offset_counter + offset_speed
+    if offset_counter >= 1 then
+        offset_counter = 0 
+        offset = offset + 1
+        if offset > 2 then
+            offset = 0
+        end
+    end
+end
+
 function draw_score()
-    print("Score: " .. score, 10, 10, 10)  -- Exibir a pontuação no canto superior esquerdo
-    if(special_weapon.active) then 
-        print("Special Weapon Active", 10, 20, 10) 
+    update_offset()
+    print("Score: " .. score, 10, 10 + offset, 10)  
+    if special_weapon.active then 
+        print("Special Weapon Active", 10, 20 + offset, 10) 
     end
     local life_icon_x = 160  
     for i = 1, player.lives do
-        spr(4, life_icon_x, 8, 0, 1, 0, 0, 1, 1)  
-        life_icon_x = life_icon_x + 12  -- Espaco entre os ícones de vida
+        spr(4, life_icon_x, 8 + offset, 0, 1, 0, 0, 1, 1)  
+        life_icon_x = life_icon_x + 12  -- Espaço entre os ícones de vida
     end
     if player2.active then
         local life_icon_x = 110 
         for i = 1, player2.lives do
-            spr(5, life_icon_x, 8, 0, 1, 0, 0, 1, 1)  
-            life_icon_x = life_icon_x + 12  -- Espaco entre os ícones de vida
+            spr(5, life_icon_x, 8 + offset, 0, 1, 0, 0, 1, 1)  
+            life_icon_x = life_icon_x + 12  -- Espaço entre os ícones de vida
         end
     end
 end
+
 
 function player_loses_life()
     if player.lives > 0 and player.immunity_timer == 0 then
@@ -421,21 +441,57 @@ function draw_game_over_screen()
 end
 
 function move_player()
-    if btn(2) then player.x = player.x - player.speed end  -- esquerda
-    if btn(3) then player.x = player.x + player.speed end  -- direita
+    local moved = false -- Variável para rastrear se o jogador se moveu
+    if btn(2) then -- Esquerda
+        player.x = player.x - player.speed
+        player.direction = 14 -- Define o sprite para a direção esquerda
+        moved = true
+    end
+    if btn(3) then -- Direita
+        player.x = player.x + player.speed
+        player.direction = 13 -- Define o sprite para a direção direita
+        moved = true
+    end
+    if not moved then
+        player.direction = 0
+    end
     if player.x < game_area_x then player.x = game_area_x end
-    if player.x > game_area_x + game_area_width - player.width then player.x = game_area_x + game_area_width - player.width end
+    if player.x > game_area_x + game_area_width - player.width then 
+        player.x = game_area_x + game_area_width - player.width 
+    end
     if player.y < game_area_y then player.y = game_area_y end
-    if player.y > game_area_y + game_area_height - player.height then player.y = game_area_y + game_area_height - player.height end
+    if player.y > game_area_y + game_area_height - player.height then 
+        player.y = game_area_y + game_area_height - player.height 
+    end
 end
 
 function move_player2()
-    if btn(0) then player2.x = player2.x - player2.speed end  -- A (esquerda)
-    if btn(1) then player2.x = player2.x + player2.speed end  -- D (direita)
-    if player2.x < game_area_x then player2.x = game_area_x end
-    if player2.x + player2.width > game_area_x + game_area_width then player2.x = game_area_x + game_area_width - player2.width end
-    if player2.y < game_area_y then player2.y = game_area_y end
-    if player2.y + player2.height > game_area_y + game_area_height then player2.y = game_area_y + game_area_height - player2.height end
+    local moved = false 
+    if btn(0) then
+        player2.x = player2.x - player2.speed
+        player2.direction = 24 -- Sprite para a esquerda
+        moved = true
+    end
+    if btn(1) then
+        player2.x = player2.x + player2.speed
+        player2.direction = 23 -- Sprite para a direita
+        moved = true
+    end
+    if player2.x < game_area_x then
+        player2.x = game_area_x
+    end
+    if player2.x + player2.width > game_area_x + game_area_width then
+        player2.x = game_area_x + game_area_width - player2.width
+    end
+    if player2.y < game_area_y then
+        player2.y = game_area_y
+    end
+    if player2.y + player2.height > game_area_y + game_area_height then
+        player2.y = game_area_y + game_area_height - player2.height
+    end
+    if not moved then
+        player2.direction = 15
+    end
 end
 
 function spawn_special_weapon()
@@ -497,10 +553,16 @@ end
 
 function move_bullets()
     for i, bullet in ipairs(bullets) do
-        bullet.y = bullet.y - 4  -- Movimento vertical
-        if bullet.dx then bullet.x = bullet.x + bullet.dx * 2 end -- Movimento diagonal
-        if bullet.dy then bullet.y = bullet.y + bullet.dy * 2 end -- Movimento diagonal
-        -- Verificar se a bala saiu da tela
+        if not bullet.trail then
+            bullet.trail = {}  -- Cria a tabela de rastro
+        end
+        bullet.y = bullet.y - 4  
+        if bullet.dx then bullet.x = bullet.x + bullet.dx * 2 end
+        if bullet.dy then bullet.y = bullet.y + bullet.dy * 2 end
+        table.insert(bullet.trail, {x = bullet.x, y = bullet.y}) 
+        if #bullet.trail > 5 then
+            table.remove(bullet.trail, 1)
+        end
         if bullet.y < game_area_y or bullet.x < game_area_x or bullet.x > game_area_x + game_area_width then
             table.remove(bullets, i)
         end
