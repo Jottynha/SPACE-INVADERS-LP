@@ -11,6 +11,7 @@ player = {x = 100, y = 120, width = 8, height = 8, speed =2, lives = 3, immunity
 player2 = {x = 120, y = 120, width = 8, height = 8, speed = 2, lives = 3, immunity_timer = 0, active = false}
 bullets = {}
 enemies = {}
+life = {x = nil, y = nil, width = 8, height = 8}
 explosions = {}  -- Tabela para armazenar as animações de explosão
 explosion_frames = {16, 17, 18, 19, 20, 21, 22}  
 explosion_duration = 10  -- Duração de cada frame da animação em contagem de ciclos
@@ -231,7 +232,6 @@ function draw_bullets()
     end
 end
 
--- Função para desenhar os inimigos
 function draw_enemies()
     for i, enemy in ipairs(enemies) do
         local sprite_id = enemy.is_fast and 3 or 1  -- Se o inimigo for rápido, usa o sprite 3
@@ -242,6 +242,12 @@ end
 function draw_special_weapon()
     if special_weapon.x then
         spr(2, special_weapon.x, special_weapon.y, 0, 1, 0, 0, 1, 1)
+    end
+end
+
+function draw_life()
+    if life.x then
+        spr(6, special_weapon.x, special_weapon.y, 0, 1, 0, 0, 1, 1)
     end
 end
 
@@ -437,6 +443,11 @@ function spawn_special_weapon()
         special_weapon.y = player.y
 end
 
+function spawn_life()
+    life.x = game_area_x + math.random(0, game_area_width - special_weapon.width)
+    life.y = player.y
+end
+
 -- Função para atirar
 function shoot()
     if btn(6) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
@@ -555,7 +566,7 @@ function check_special_weapon_collision()
        player.y + player.height > special_weapon.y then
         special_weapon.active = true
         special_weapon.timer = special_weapon.duration
-        special_weapon.x = nil  -- Remove o item da tela
+        special_weapon.x = nil  
         special_weapon.y = nil
     end
     if special_weapon.x and player2.active and player2.x < special_weapon.x + special_weapon.width and
@@ -564,8 +575,27 @@ function check_special_weapon_collision()
        player2.y + player2.height > special_weapon.y then
         special_weapon.active = true
         special_weapon.timer = special_weapon.duration
-        special_weapon.x = nil  -- Remove o item da tela
+        special_weapon.x = nil  
         special_weapon.y = nil
+    end
+end
+
+function check_life_collision()
+    if life.x and player.x < life.x + life.width and
+       player.x + player.width > life.x and
+       player.y < life.y + life.height and
+       player.y + player.height > life.y then
+        player.lives = player.lives + 1
+        life.x = nil  
+        life.y = nil
+    end
+    if life.x and player2.active and player2.x < life.x + life.width and
+       player2.x + player2.width > life.x and
+       player2.y < life.y + life.height and
+       player2.y + player2.height > life.y then
+        layer.lives = player2.lives + 1
+        life.x = nil  
+        life.y = nil
     end
 end
 
@@ -635,6 +665,7 @@ function draw_game()
     draw_explosions()
     draw_barriers()
     draw_enemy_bullets()
+    draw_life()
     if game_over then
         draw_game_over_screen()  -- Exibe a tela de Game Over
     end
@@ -729,6 +760,7 @@ function TIC()
             update_shooting()
             update_weapon()
             check_special_weapon_collision()
+            check_life_collision()
             
             if player.lives == 0 or player2.lives == 0 then
                 game_over = true
@@ -739,6 +771,7 @@ function TIC()
                 spawn_special_weapon() 
                 enemy_count = enemy_count + 1
             end  -- A cada 10 segundos
+            if t% 800 == 0 then spawn_life() end
         end
         
         draw_game()  -- Desenha o jogo em qualquer estado
