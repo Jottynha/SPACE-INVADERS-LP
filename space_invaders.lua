@@ -19,6 +19,7 @@ enemy_speed = 0.1  -- Diminui a velocidade dos inimigos
 local enemy_count = 5  -- Número de inimigos a gerar
 game_over = false
 game_started = false
+musica_menu = true
 musica = false
 t = 0
 score = 0  -- Variável de pontuação
@@ -379,6 +380,7 @@ function draw_start_screen()
 
     -- Reproduzir som ao clicar, com duração de 20 ticks (0.33 segundos)
     if is_clicked then
+        musica_menu = false
         sfx(1, "F#6", 20, 1, 15)
         game_started = true  
         create_enemies()  
@@ -819,13 +821,17 @@ function active_player2()
 end
 
 function TIC()
-    if not musica then
+    if not musica and not musica_menu  then
         initialize_barriers()
-        --music(1)
+        music(7)
+        music(1)
         musica = true
     end
     if btn(5) then active_player2() end
     if not game_started then
+        if musica_menu then
+            music(2)
+        end 
         draw_start_screen()
     else
         if not game_over then
