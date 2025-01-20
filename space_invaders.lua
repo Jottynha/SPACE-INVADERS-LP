@@ -153,6 +153,23 @@ function create_enemies()
     end
 end
 
+function spawn_boss()
+    local enemy = {
+        x = (game_area_x + game_area_width) / 2 - 16, -- Centro da tela, considerando largura do boss (64px)
+        y = game_area_y, -- No topo da área de jogo
+        width = 16, -- Boss ocupa 4 sprites (2x2), 64px de largura
+        height = 16, -- 64px de altura
+        health = 20, -- Precisa de 20 tiros para ser eliminado
+        max_health = 20,
+        sprites = {54, 55, 70, 71}, -- Sprites do boss
+        speed = 0.2, -- Velocidade do movimento
+        direction = 1, -- Direção horizontal (1 para direita, -1 para esquerda)
+        is_boss = true
+    }
+    table.insert(enemies, enemy) -- Adiciona o boss na lista de inimigos
+end
+
+
 -- Função para criar uma nova horda de inimigos
 function spawn_enemy_wave()
     local max_attempts = 50  -- Tentativas para evitar colisões
@@ -170,7 +187,8 @@ function spawn_enemy_wave()
                 y = game_area_y - 7,  -- Sempre no topo da tela
                 width = 8,
                 height = 8,
-                is_fast = math.random() < 0.3 -- 30% de chance de ser rápido
+                is_fast = math.random() < 0.3, -- 30% de chance de ser rápido
+                is_very_fast = math.random() < 0.1
             }
 
             -- Verifica se há colisão com outros inimigos
@@ -244,8 +262,18 @@ end
 
 function draw_enemies()
     for i, enemy in ipairs(enemies) do
-        local sprite_id = enemy.is_fast and 3 or 1  -- Se o inimigo for rápido, usa o sprite 3
-        spr(sprite_id, enemy.x, enemy.y, 0, 1, 0, 0, 1, 1)  -- Desenha o inimigo com a cor correspondente
+        if enemy.is_boss then
+            -- Desenha o boss como uma grade de 2x2 sprites
+            draw_boss_health(enemy)
+            spr(enemy.sprites[1], enemy.x, enemy.y,0, 1, 0, 0, 1, 1)                      -- Sprite superior esquerdo
+            spr(enemy.sprites[2], enemy.x + 8, enemy.y,0, 1, 0, 0, 1, 1)                -- Sprite superior direito
+            spr(enemy.sprites[3], enemy.x, enemy.y + 8,0, 1, 0, 0, 1, 1)                -- Sprite inferior esquerdo
+            spr(enemy.sprites[4], enemy.x + 8, enemy.y + 8,0, 1, 0, 0, 1, 1)           -- Sprite inferior direito
+        else
+            -- Lógica para inimigos normais
+            local sprite_id = enemy.is_very_fast and 38 or (enemy.is_fast and 3 or 1)
+            spr(sprite_id, enemy.x, enemy.y, 0, 1, 0, 0, 1, 1)  -- Desenha o inimigo com o sprite correspondente
+        end
     end
 end
 
@@ -259,6 +287,34 @@ function draw_life()
     if life.x then
         spr(6, special_weapon.x, special_weapon.y, 0, 1, 0, 0, 1, 1)
     end
+end
+
+function rectfill(x1, y1, x2, y2, color)
+    for y = y1, y2 do
+        line(x1, y, x2, y, color)
+    end
+end
+
+
+function draw_boss_health(boss)
+    -- Posição do nome e da barra de vida
+    local name_x = boss.x - 50 -- Centraliza o nome (boss.x + 8 pois o boss tem 16x16)
+    local name_y = boss.y - 12 -- Ajusta a posição do nome acima do boss
+    local bar_x = boss.x - 30   -- Centraliza a barra de vida
+    local bar_y = boss.y - 6   -- A barra de vida aparece logo abaixo do nome
+    
+    -- Largura da barra de vida
+    local bar_width = 64  -- Largura total da barra
+    local bar_height = 4  -- Altura da barra
+    local health_percentage = boss.health / boss.max_health -- Porcentagem de vida restante
+    local filled_width = bar_width * health_percentage -- Largura preenchida
+    
+    -- Desenhar o nome do boss
+    print("CRIATURA DAS PROFUNDEZAS", name_x, name_y, 7) -- Texto branco (cor 7)
+    
+    -- Desenhar a barra de vida
+    rect(bar_x, bar_y, bar_width, bar_height, 15)         -- Fundo da barra (preto)
+    rectfill(bar_x, bar_y, bar_x + filled_width, bar_y + bar_height, 3) -- Parte preenchida (vermelho)
 end
 
 
@@ -613,6 +669,9 @@ function move_enemies()
     for i, enemy in ipairs(enemies) do
         if enemy.is_fast then
             enemy_speed = 0.3
+        end
+        if enemy.is_very_fast then
+            enemy_speed = 0.6    
         else
             enemy_speed = 0.1
         end
@@ -628,6 +687,9 @@ function move_enemies()
             -- Se o inimigo for rápido, descer mais rápido
             if enemy.is_fast then
                 enemy.y = enemy.y + 12  -- Inimigos rápidos descem mais (ex: 12 pixels)
+            end
+            if enemy.is_very_fast then
+                enemy.y = enemy.y + 18  
             else
                 enemy.y = enemy.y + 8   -- Inimigos normais descem 8 pixels
             end
@@ -688,16 +750,26 @@ function check_collisions()
     for i, bullet in ipairs(bullets) do
         for j, enemy in ipairs(enemies) do
             if bullet.x < enemy.x + enemy.width and bullet.x + bullet.width > enemy.x and
-            bullet.y < enemy.y + enemy.height and bullet.y + bullet.height > enemy.y then
-                table.insert(explosions, {x = enemy.x, y = enemy.y, frame = 1, duration = explosion_duration})
+               bullet.y < enemy.y + enemy.height and bullet.y + bullet.height > enemy.y then
+                if enemy.health and enemy.health > 0 then
+                    enemy.health = enemy.health - 1 -- Diminui a saúde do boss
+                    if enemy.health <= 0 then
+                        table.insert(explosions, {x = enemy.x, y = enemy.y, frame = 1, duration = explosion_duration})
+                        table.remove(enemies, j)
+                        sfx(id_hit) -- Toca som de eliminação
+                        score = score + 100 -- Pontuação maior para o boss
+                    end
+                else
+                    table.insert(explosions, {x = enemy.x, y = enemy.y, frame = 1, duration = explosion_duration})
+                    table.remove(enemies, j)
+                    score = score + 10 -- Pontuação normal para inimigos comuns
+                end
                 table.remove(bullets, i)
-                table.remove(enemies, j)
-                sfx(id_hit) -- Toca o som de inimigos eliminados
-                score = score + 10  -- Aumenta a pontuação
                 break
             end
         end
     end
+    
 
     -- Verifica colisões entre o jogador e inimigos
     for i, enemy in ipairs(enemies) do
@@ -832,6 +904,7 @@ function TIC()
         draw_start_screen()
     else
         if not game_over then
+            
             -- Atualizar o jogo normalmente
             move_player()
             if player2.active then move_player2() end
@@ -856,6 +929,7 @@ function TIC()
                 enemy_count = enemy_count + 1
             end  -- A cada 10 segundos
             if t% 800 == 0 then spawn_life() end
+            if t% 900 == 0 then spawn_boss() end
         end
         
         draw_game()  -- Desenha o jogo em qualquer estado
