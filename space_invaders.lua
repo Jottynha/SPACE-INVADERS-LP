@@ -21,6 +21,7 @@ game_over = false
 game_started = false
 musica_menu = true
 musica = false
+control_music = false
 t = 0
 score = 0  -- Variável de pontuação
 x = 96
@@ -47,7 +48,6 @@ local offset_counter = 0
 was_hovered = false -- Variável para rastrear se o botão estava em "hover" no quadro anterior
 
 -- ID dos efeitos sonoros
-local id_shoot = 17
 local id_hit = 16
 
 --  INIMIGOS
@@ -380,7 +380,7 @@ function draw_start_screen()
 
     -- Reproduzir som ao clicar, com duração de 20 ticks (0.33 segundos)
     if is_clicked then
-        musica_menu = false
+        control_music = true
         sfx(1, "F#6", 20, 1, 15)
         game_started = true  
         create_enemies()  
@@ -508,8 +508,7 @@ end
 function shoot()
     if btn(6) and shot_timer == 0 then  -- botão de atirar (Z) e se o tempo de espera for 0
         table.insert(bullets, {x = player.x + 3, y = player.y, width = 8, height = 8})  -- Tiro pequeno
-        sfx(id_shoot)-- Tocar som do tiro
-        --sfx(2, "B-6", 5, 1, 5, 1) -- Toca o som no canal 1 com volume máximo e velocidade padrão.
+        sfx(2, "B-6", 2, 1, 3, 1)
         shot_timer = shot_cooldown  -- Reinicia o timer de cooldown
     end
 end
@@ -517,8 +516,7 @@ end
 function shoot_player2()
     if btn(4) and shot_timer_2 == 0 and player2.active then  -- botão de atirar (Z) e se o tempo de espera for 0
         table.insert(bullets, {x = player2.x + 3, y = player2.y, width = 1, height = 2})  -- Tiro pequeno
-        sfx(id_shoot)-- Tocar som do tiro
-        --sfx(2, "B-6", 5, 1, 5, 1)
+        sfx(2, "B-6", 2, 1, 3, 1)
         shot_timer_2 = shot_cooldown  -- Reinicia o timer de cooldown
     end
 end
@@ -541,8 +539,7 @@ function shoot_special()
             table.insert(bullets, {x = player.x + 9, y = player.y, width = 8, height = 8, dx = -1, dy = -1}) -- Diagonal esquerda
         end
 
-        sfx(id_shoot)-- Tocar som do tiro
-        --sfx(2, "C-6", 5, 1, 5, 1) -- Toca o som no canal 1 com volume máximo e velocidade padrão.
+        sfx(2, "C-6", 2, 1, 3, 1)
         shot_timer = shot_cooldown
     end
 end
@@ -561,8 +558,7 @@ function shoot_special_2()
             table.insert(bullets, {x = player2.x + 9, y = player2.y, width = 2, height = 4, dx = -1, dy = -1}) -- Diagonal esquerda
         end
 
-        sfx(id_shoot)-- Tocar som do tiro
-        --sfx(2, "C-6", 5, 1, 5, 1)
+        sfx(2, "C-6", 2, 1, 3, 1) 
         shot_timer_2 = shot_cooldown
     end
 end
@@ -821,7 +817,7 @@ function active_player2()
 end
 
 function TIC()
-    if not musica and not musica_menu  then
+    if not musica and control_music  then
         initialize_barriers()
         music(7)
         music(1)
@@ -829,8 +825,9 @@ function TIC()
     end
     if btn(5) then active_player2() end
     if not game_started then
-        if musica_menu then
+        if musica_menu and not control_music then
             music(2)
+            musica_menu = false
         end 
         draw_start_screen()
     else
